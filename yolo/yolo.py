@@ -28,6 +28,7 @@ class cv_Yolo:
 
     def detect(self, image):
         # assert image is opencv
+        print(image.shape)
         (H,W) = image.shape[:2]
 
         ln = self.net.getLayerNames()

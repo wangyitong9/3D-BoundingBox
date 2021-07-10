@@ -82,11 +82,12 @@ def main():
         print('No previous model found, please train first!')
         exit()
     else:
+        device = torch.device('cpu')
         print('Using previous model %s'%model_lst[-1])
         my_vgg = vgg.vgg19_bn(pretrained=True)
         # TODO: load bins from file or something
-        model = Model.Model(features=my_vgg.features, bins=2).cuda()
-        checkpoint = torch.load(weights_path + '/%s'%model_lst[-1])
+        model = Model.Model(features=my_vgg.features, bins=2)#.cuda()
+        checkpoint = torch.load(weights_path + '/%s'%model_lst[-1], map_location=device)
         model.load_state_dict(checkpoint['model_state_dict'])
         model.eval()
 
@@ -117,21 +118,24 @@ def main():
 
     try:
         ids = [x.split('.')[0] for x in sorted(os.listdir(img_path))]
+        print(ids)
     except:
         print("\nError: no images in %s"%img_path)
         exit()
 
     for img_id in ids:
-
+        if len(img_id) == 0:
+            continue
         start_time = time.time()
 
         img_file = img_path + img_id + ".png"
-
+        print(img_file)
         # P for each frame
         # calib_file = calib_path + id + ".txt"
 
         truth_img = cv2.imread(img_file)
         img = np.copy(truth_img)
+        print(img.shape)
         yolo_img = np.copy(truth_img)
 
         detections = yolo.detect(yolo_img)
@@ -151,10 +155,11 @@ def main():
             theta_ray = detectedObject.theta_ray
             input_img = detectedObject.img
             proj_matrix = detectedObject.proj_matrix
+            print(proj_matrix)
             box_2d = detection.box_2d
             detected_class = detection.detected_class
 
-            input_tensor = torch.zeros([1,3,224,224]).cuda()
+            input_tensor = torch.zeros([1,3,224,224])#.cuda()
             input_tensor[0,:,:,:] = input_img
 
             [orient, conf, dim] = model(input_tensor)
@@ -179,6 +184,7 @@ def main():
 
             if not FLAGS.hide_debug:
                 print('Estimated pose: %s'%location)
+                print('Estimated orient: %s'%orient)
 
         if FLAGS.show_yolo:
             numpy_vertical = np.concatenate((truth_img, img), axis=0)
