@@ -66,7 +66,7 @@ def plot_regressed_3d_bbox(img, cam_to_img, box_2d, dimensions, alpha, theta_ray
 
     orient = alpha + theta_ray
 
-    print("plot orientation", orient_groundtruth)
+    # print("plot orientation", orient_groundtruth)
 
     if img_2d is not None:
         plot_2d_box(img_2d, box_2d, orient_groundtruth)
@@ -145,7 +145,7 @@ def main():
 
         truth_img = cv2.imread(img_file)
         img = np.copy(truth_img)
-        print(img.shape)
+        # print(img.shape)
 
         #yolo_img = np.copy(truth_img)
         #
@@ -186,7 +186,7 @@ def main():
         for index, detection in enumerate(detections):
 
             if not averages.recognized_class(detection.detected_class):
-                print("here")
+                # print("here")
                 continue
 
             # this is throwing when the 2d bbox is invalid
@@ -195,13 +195,13 @@ def main():
                 #print("try detected")
                 detectedObject = DetectedObject(img, detection.detected_class, detection.box_2d, calib_file)
             except:
-                print("throw")
+                # print("throw")
                 continue
 
             theta_ray = detectedObject.theta_ray
             input_img = detectedObject.img
             proj_matrix = detectedObject.proj_matrix
-            print(proj_matrix)
+            # print(proj_matrix)
             box_2d = detection.box_2d
             detected_class = detection.detected_class
 
@@ -212,7 +212,7 @@ def main():
             orient = orient.cpu().data.numpy()[0, :, :]
             conf = conf.cpu().data.numpy()[0, :]
             dim = dim.cpu().data.numpy()[0, :]
-            print("ggggg", averages.get_item(detected_class))
+            # print("ggggg", averages.get_item(detected_class))
             dim += averages.get_item(detected_class)
 
             """
@@ -254,8 +254,9 @@ def main():
         if FLAGS.video:
             cv2.waitKey(1)
         else:
-            if cv2.waitKey(0) != 32: # space bar
-                exit()
+            cv2.waitKey(1)
+            #if cv2.waitKey(0) != 32: # space bar
+            #     exit()
 
 if __name__ == '__main__':
     main()

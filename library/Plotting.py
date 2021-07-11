@@ -120,9 +120,9 @@ def plot_2d_box(img, box_2d, orient_groundtruth=None):
     # create a square from the corners
     pt1, pt2, pt3, pt4 = create_2d_box(box_2d)
 
-    print("orient_groundtruth", orient_groundtruth)
+    # print("orient_groundtruth", orient_groundtruth)
     center = ((pt1[0] + pt3[0]) // 2, (pt1[1] + pt3[1]) // 2)
-    print("center", center)
+    # print("center", center)
     dest = (center[0] + int(35 * math.sin(orient_groundtruth)), center[1] + int(35 * math.cos(orient_groundtruth)))
     if orient_groundtruth is not None:
         cv2.arrowedLine(img, center, dest, cv_colors.RED.value, 2)
