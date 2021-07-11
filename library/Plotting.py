@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 from enum import Enum
 import itertools
+import math
+
+from numpy.lib.type_check import imag
 
 from .File import *
 from .Math import *
@@ -113,9 +116,16 @@ def plot_3d_box(img, cam_to_img, ry, dimension, center):
     cv2.line(img, front_mark[0], front_mark[3], cv_colors.BLUE.value, 1)
     cv2.line(img, front_mark[1], front_mark[2], cv_colors.BLUE.value, 1)
 
-def plot_2d_box(img, box_2d):
+def plot_2d_box(img, box_2d, orient_groundtruth=None):
     # create a square from the corners
     pt1, pt2, pt3, pt4 = create_2d_box(box_2d)
+
+    print("orient_groundtruth", orient_groundtruth)
+    center = ((pt1[0] + pt3[0]) // 2, (pt1[1] + pt3[1]) // 2)
+    print("center", center)
+    dest = (center[0] + int(35 * math.sin(orient_groundtruth)), center[1] + int(35 * math.cos(orient_groundtruth)))
+    if orient_groundtruth is not None:
+        cv2.arrowedLine(img, center, dest, cv_colors.RED.value, 2)
 
     # plot the 2d box
     cv2.line(img, pt1, pt2, cv_colors.BLUE.value, 2)

@@ -12,6 +12,7 @@ from library.Math import *
 from library.Plotting import *
 from torch_lib import Model, ClassAverages
 from yolo.yolo import cv_Yolo
+from yolo.yolo import Detection
 
 import os
 import time
@@ -25,6 +26,7 @@ from torch.autograd import Variable
 from torchvision.models import vgg
 
 import argparse
+import xml.etree.ElementTree as ET
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -57,15 +59,17 @@ parser.add_argument("--hide-debug", action="store_true",
                     help="Supress the printing of each 3d location")
 
 
-def plot_regressed_3d_bbox(img, cam_to_img, box_2d, dimensions, alpha, theta_ray, img_2d=None):
+def plot_regressed_3d_bbox(img, cam_to_img, box_2d, dimensions, alpha, theta_ray, img_2d=None, orient_groundtruth=None):
 
     # the math! returns X, the corners used for constraint
     location, X = calc_location(dimensions, cam_to_img, box_2d, alpha, theta_ray)
 
     orient = alpha + theta_ray
 
+    print("plot orientation", orient_groundtruth)
+
     if img_2d is not None:
-        plot_2d_box(img_2d, box_2d)
+        plot_2d_box(img_2d, box_2d, orient_groundtruth)
 
     plot_3d_box(img, cam_to_img, orient, dimensions, location) # 3d boxes
 
@@ -118,44 +122,86 @@ def main():
 
     try:
         ids = [x.split('.')[0] for x in sorted(os.listdir(img_path))]
-        print(ids)
+        #print(ids)
     except:
         print("\nError: no images in %s"%img_path)
         exit()
 
+    filename = "MVI_40152.xml"
+    xml_file = "../Annotation/DETRAC-Train-Annotations-XML/" + filename
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+    
     for img_id in ids:
+        #print(img_id)
         if len(img_id) == 0:
             continue
         start_time = time.time()
 
         img_file = img_path + img_id + ".png"
-        print(img_file)
+        # print(img_file)
         # P for each frame
         # calib_file = calib_path + id + ".txt"
 
         truth_img = cv2.imread(img_file)
         img = np.copy(truth_img)
         print(img.shape)
-        yolo_img = np.copy(truth_img)
 
-        detections = yolo.detect(yolo_img)
+        #yolo_img = np.copy(truth_img)
+        #
+        #detections = yolo.detect(yolo_img)
 
-        for detection in detections:
+        # get detection for this particular frame
+
+        detections = []
+        orientation_groundtruth = []
+
+        frame_num = int(img_id[3:])
+        #print(frame_num)
+        for frame in root.iter('frame'):
+            if int(frame.attrib["num"]) == frame_num:
+                # found the exact frame, now parse the boxed and orientation
+
+                for target_list in frame.iter('target_list'):
+                    for target in target_list.iter('target'):
+                        # this is one car
+                        box_2d = None
+                        class_ = None
+                        for box in target.iter('box'):
+                            b = box.attrib
+                            #print(b)
+                            top_left = (int(float(b["left"])), int(float(b["top"])))
+                            bottom_right = (top_left[0] + int(float(b["width"])), top_left[1] + int(float(b["height"])))
+                            box_2d = [top_left, bottom_right]
+                            
+
+                        for attribute in target.iter('attribute'):
+                            orientation_groundtruth.append(float(attribute.attrib["orientation"])/180*np.pi)
+                            class_ = attribute.attrib["vehicle_type"]
+                            detections.append(Detection(box_2d, class_))
+
+                break                 
+
+
+        for index, detection in enumerate(detections):
 
             if not averages.recognized_class(detection.detected_class):
+                print("here")
                 continue
 
             # this is throwing when the 2d bbox is invalid
             # TODO: better check
             try:
+                #print("try detected")
                 detectedObject = DetectedObject(img, detection.detected_class, detection.box_2d, calib_file)
             except:
+                print("throw")
                 continue
 
             theta_ray = detectedObject.theta_ray
             input_img = detectedObject.img
             proj_matrix = detectedObject.proj_matrix
-            # print(proj_matrix)
+            print(proj_matrix)
             box_2d = detection.box_2d
             detected_class = detection.detected_class
 
@@ -166,9 +212,10 @@ def main():
             orient = orient.cpu().data.numpy()[0, :, :]
             conf = conf.cpu().data.numpy()[0, :]
             dim = dim.cpu().data.numpy()[0, :]
-
+            print("ggggg", averages.get_item(detected_class))
             dim += averages.get_item(detected_class)
 
+            """
             argmax = np.argmax(conf)
             orient = orient[argmax, :]
             cos = orient[0]
@@ -176,9 +223,12 @@ def main():
             alpha = np.arctan2(sin, cos)
             alpha += angle_bins[argmax]
             alpha -= np.pi
+            """
+
+            alpha = orientation_groundtruth[index] - 1/2 * np.pi - theta_ray
 
             if FLAGS.show_yolo:
-                location = plot_regressed_3d_bbox(img, proj_matrix, box_2d, dim, alpha, theta_ray, truth_img)
+                location = plot_regressed_3d_bbox(img, proj_matrix, box_2d, dim, alpha, theta_ray, truth_img, orientation_groundtruth[index])
             else:
                 location = plot_regressed_3d_bbox(img, proj_matrix, box_2d, dim, alpha, theta_ray)
 
