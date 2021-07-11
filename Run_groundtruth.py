@@ -224,8 +224,12 @@ def main():
             alpha += angle_bins[argmax]
             alpha -= np.pi
             """
-
-            alpha = orientation_groundtruth[index] - 1/2 * np.pi - theta_ray
+            theta = 0
+            if orientation_groundtruth[index] >= 0 and orientation_groundtruth[index] <= 1.5 * np.pi:
+                theta = 1/2 * np.pi - orientation_groundtruth[index]
+            else:
+                theta = 5/2 * np.pi - orientation_groundtruth[index]
+            alpha = theta - theta_ray
 
             if FLAGS.show_yolo:
                 location = plot_regressed_3d_bbox(img, proj_matrix, box_2d, dim, alpha, theta_ray, truth_img, orientation_groundtruth[index])

@@ -177,6 +177,9 @@ def main():
             alpha += angle_bins[argmax]
             alpha -= np.pi
 
+            print("theta_L", alpha)
+            print("theta_ray". theta_ray)
+            print("2D box", )
             if FLAGS.show_yolo:
                 location = plot_regressed_3d_bbox(img, proj_matrix, box_2d, dim, alpha, theta_ray, truth_img)
             else:

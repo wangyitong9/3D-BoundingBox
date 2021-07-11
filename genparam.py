@@ -2,9 +2,9 @@ import numpy as np
 import math
 
 def main():
-    theta_x = 0 # should always be 0
-    theta_y = -80 / 180 * math.pi
-    theta_z = -10 / 180 * math.pi
+    theta_x = 20 / 180 * np.pi 
+    theta_y = -22 / 180 * np.pi
+    theta_z = 0 # should always be 0
 
     K = np.array([
         [774.882, 0, 480],
