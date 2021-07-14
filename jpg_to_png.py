@@ -18,6 +18,7 @@ def main():
     scene_dir = [x for x in sorted(os.listdir(input_dir))]
     print(scene_dir)
     for scene in scene_dir:
+        print(scene)
         if scene[0] != '.':
             os.mkdir(output_dir + scene)
             files = [x for x in sorted(os.listdir(input_dir + scene))]

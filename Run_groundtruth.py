@@ -127,7 +127,7 @@ def main():
         print("\nError: no images in %s"%img_path)
         exit()
 
-    filename = "MVI_40152.xml"
+    filename = "MVI_41073.xml"
     xml_file = "../Annotation/DETRAC-Train-Annotations-XML/" + filename
     tree = ET.parse(xml_file)
     root = tree.getroot()
@@ -232,7 +232,7 @@ def main():
             alpha = theta - theta_ray
 
             if FLAGS.show_yolo:
-                location = plot_regressed_3d_bbox(img, proj_matrix, box_2d, dim, alpha, theta_ray, truth_img, orientation_groundtruth[index])
+                location = plot_regressed_3d_bbox(img, proj_matrix, box_2d, dim, alpha, theta_ray, img, orientation_groundtruth[index])
             else:
                 location = plot_regressed_3d_bbox(img, proj_matrix, box_2d, dim, alpha, theta_ray)
 
