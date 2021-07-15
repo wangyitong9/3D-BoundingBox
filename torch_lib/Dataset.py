@@ -26,9 +26,9 @@ def generate_bins(bins):
 class Dataset(data.Dataset):
     def __init__(self, path, bins=2, overlap=0.1):
 
-        self.top_label_path = path + "/label_2/"
-        self.top_img_path = path + "/image_2/"
-        self.top_calib_path = path + "/calib/"
+        self.top_label_path = "../DETRAC-Train-Annotations-XML/"
+        self.top_img_path = "../train_dir_small/"
+        self.top_calib_path = os.path.abspath(os.path.dirname(__file__)) + "/calib/"
         # use a relative path instead?
 
         # get Proj matrix for all scenes

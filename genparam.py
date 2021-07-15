@@ -3,8 +3,8 @@ import math
 import os
 
 def main():
-    theta_x = 20 / 180 * np.pi 
-    theta_y = -22 / 180 * np.pi
+    theta_x = 15 / 180 * np.pi 
+    theta_y = 15 / 180 * np.pi
     theta_z = 0 # should always be 0
 
     K = np.array([
@@ -40,7 +40,7 @@ def main():
         s = s + "0.0 "
     
     print(s)
-    f = open("calib/MVI_40152.txt", "w")
+    f = open("calib/MVI_41063.txt", "w")
     f.write("P_rect_02: " + s)
 
 if __name__ == '__main__':
