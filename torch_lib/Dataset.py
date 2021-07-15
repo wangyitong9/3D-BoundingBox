@@ -11,6 +11,8 @@ from library.File import *
 
 from .ClassAverages import ClassAverages
 
+import xml.etree.ElementTree as ET
+
 # TODO: clean up where this is
 def generate_bins(bins):
     angle_bins = np.zeros(bins)
@@ -29,8 +31,15 @@ class Dataset(data.Dataset):
         self.top_calib_path = path + "/calib/"
         # use a relative path instead?
 
-        # TODO: which camera cal to use, per frame or global one?
-        self.proj_matrix = get_P(os.path.abspath(os.path.dirname(os.path.dirname(__file__)) + '/camera_cal/calib_cam_to_cam.txt'))
+        # get Proj matrix for all scenes
+        self.proj_matrix = {}
+        file_names = [x for x in sorted(os.listdir(self.top_calib_path))]
+        for file in file_names:
+            proj_matrx = get_P(file)
+            self.proj_matrix[file.split('.')[0]] = proj_matrx
+
+
+        # get_P(os.path.abspath(os.path.dirname(os.path.dirname(__file__)) + '/camera_cal/calib_cam_to_cam.txt'))
 
         self.ids = [x.split('.')[0] for x in sorted(os.listdir(self.top_img_path))] # name of file
         self.num_images = len(self.ids)
@@ -62,13 +71,13 @@ class Dataset(data.Dataset):
         last_id = ""
         for obj in self.object_list:
             id = obj[0]
-            line_num = obj[1]
-            label = self.get_label(id, line_num)
+            target_id = obj[1]
+            label = self.get_label(id, target_id)
             if id != last_id:
                 self.labels[id] = {}
                 last_id = id
 
-            self.labels[id][str(line_num)] = label
+            self.labels[id][str(target_id)] = label
 
         # hold one image at a time
         self.curr_id = ""
@@ -77,17 +86,35 @@ class Dataset(data.Dataset):
 
     # should return (Input, Label)
     def __getitem__(self, index):
+        # id is in the form of MVI_xxxxx-yyyyy
         id = self.object_list[index][0]
-        line_num = self.object_list[index][1]
+        target_id = self.object_list[index][1]
 
+        scene = id.split("-")[0]
         if id != self.curr_id:
             self.curr_id = id
             self.curr_img = cv2.imread(self.top_img_path + '%s.png'%id)
 
-        label = self.labels[id][str(line_num)]
+        label = self.labels[id][str(target_id)]
         # P doesn't matter here
-        obj = DetectedObject(self.curr_img, label['Class'], label['Box_2D'], self.proj_matrix, label=label)
+        obj = DetectedObject(self.curr_img, label['Class'], label['Box_2D'], self.proj_matrix[scene], label=label)
 
+        Orientation = np.zeros((self.bins, 2))
+        Confidence = np.zeros(self.bins)
+
+        angle = label["Theta"] - obj.theta_ray
+
+        bin_idxs = self.get_bin(angle)
+
+        for bin_idx in bin_idxs:
+            angle_diff = angle - self.angle_bins[bin_idx]
+
+            Orientation[bin_idx,:] = np.array([np.cos(angle_diff), np.sin(angle_diff)])
+            Confidence[bin_idx] = 1
+
+        label["Orientation"] = Orientation
+        label["Confidence"] = Confidence
+        
         return obj.img, label
 
     def __len__(self):
@@ -96,27 +123,89 @@ class Dataset(data.Dataset):
     def get_objects(self, ids):
         objects = []
         for id in ids:
-            with open(self.top_label_path + '%s.txt'%id) as file:
-                for line_num,line in enumerate(file):
-                    line = line[:-1].split(' ')
-                    obj_class = line[0]
-                    if obj_class == "DontCare":
-                        continue
-
-                    dimension = np.array([float(line[8]), float(line[9]), float(line[10])], dtype=np.double)
-                    self.averages.add_item(obj_class, dimension)
-
-                    objects.append((id, line_num))
+            # is is in the form MVI_xxxxx-yyyyy
+            scene = id.split["-"][0]
+            frame_num = int(id.split["-"][1])
+            with open(self.top_label_path + '%s.xml'%scene) as xml_file:
+                tree = ET.parse(xml_file)
+                root = tree.getroot()
 
 
-        self.averages.dump_to_file()
+                for frame in root.iter('frame'):
+                    if int(frame.attrib["num"]) == frame_num:
+                        # found the exact frame, now parse the boxed and orientation
+
+                        for target_list in frame.iter('target_list'):
+                            for target in target_list.iter('target'):
+                                # this is one car
+                                target_id = int(target.attrib["id"])
+                                objects.append((id, target_id))
+
+                        break
+                # for line_num,line in enumerate(file):
+                #     line = line[:-1].split(' ')
+                #     obj_class = line[0]
+                #     if obj_class == "DontCare":
+                #         continue
+
+                #     dimension = np.array([float(line[8]), float(line[9]), float(line[10])], dtype=np.double)
+                #     self.averages.add_item(obj_class, dimension)
+
+                #     objects.append((id, line_num))
+
+
+        # self.averages.dump_to_file()
         return objects
 
 
-    def get_label(self, id, line_num):
-        lines = open(self.top_label_path + '%s.txt'%id).read().splitlines()
-        label = self.format_label(lines[line_num])
+    def get_label(self, id, target_id):
+        scene = id.split["-"][0]
+        frame_num = int(id.split["-"][1])
 
+        # lines = open(self.top_label_path + '%s.txt'%id).read().splitlines()
+        # label = self.format_label(lines[line_num])
+        label = {}
+        with open(self.top_label_path + '%s.xml'%scene) as xml_file:
+                tree = ET.parse(xml_file)
+                root = tree.getroot()
+
+                for frame in root.iter('frame'):
+                    if int(frame.attrib["num"]) == frame_num:
+                        # found the exact frame, now parse the boxed and orientation
+
+                        for target_list in frame.iter('target_list'):
+                            for target in target_list.iter('target'):
+                                # find the correct target
+                                if target_id == int(target.attrib["id"]):
+                                    box_2d = None
+                                    class_ = None
+                                    Dimension = np.array([0, 0, 0], dtype=np.double)
+
+                                    for box in target.iter('box'):
+                                        b = box.attrib
+                                        #print(b)
+                                        top_left = (int(float(b["left"])), int(float(b["top"])))
+                                        bottom_right = (top_left[0] + int(float(b["width"])), top_left[1] + int(float(b["height"])))
+                                        box_2d = [top_left, bottom_right]
+
+
+                                    for attribute in target.iter('attribute'):
+                                        orientation_GT = float(attribute.attrib["orientation"])/180*np.pi
+                                        class_ = attribute.attrib["vehicle_type"]
+                                        theta = 0
+                                        if orientation_GT >= 0 and orientation_GT <= 1.5 * np.pi:
+                                            theta = 1/2 * np.pi - orientation_GT
+                                        else:
+                                            theta = 5/2 * np.pi - orientation_GT
+                                    label = {
+                                        'Class': class_,
+                                        'Box_2D': box_2d,
+                                        'Dimensions': Dimension,
+                                        'Theta': theta
+                                    }
+
+                                    return label
+                        break
         return label
 
     def get_bin(self, angle):

@@ -72,19 +72,19 @@ def main():
 
             truth_orient = local_labels['Orientation'].float()#.cuda()
             truth_conf = local_labels['Confidence'].long()#.cuda()
-            truth_dim = local_labels['Dimensions'].float()#.cuda()
+            # truth_dim = local_labels['Dimensions'].float()#.cuda()
 
             local_batch=local_batch.float()#.cuda()
             [orient, conf, dim] = model(local_batch)
 
             orient_loss = orient_loss_func(orient, truth_orient, truth_conf)
-            dim_loss = dim_loss_func(dim, truth_dim)
+            # dim_loss = dim_loss_func(dim, truth_dim)
 
             truth_conf = torch.max(truth_conf, dim=1)[1]
             conf_loss = conf_loss_func(conf, truth_conf)
 
             loss_theta = conf_loss + w * orient_loss
-            loss = alpha * dim_loss + loss_theta
+            loss = loss_theta
 
             opt_SGD.zero_grad()
             loss.backward()
