@@ -31,10 +31,10 @@ def main():
     generator = data.DataLoader(dataset, **params)
 
     my_vgg = vgg.vgg19_bn(pretrained=True)
-    model = Model(features=my_vgg.features).cuda()
+    model = Model(features=my_vgg.features)#.cuda()
     opt_SGD = torch.optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
-    conf_loss_func = nn.CrossEntropyLoss().cuda()
-    dim_loss_func = nn.MSELoss().cuda()
+    conf_loss_func = nn.CrossEntropyLoss()#.cuda()
+    dim_loss_func = nn.MSELoss()#.cuda()
     orient_loss_func = OrientationLoss
 
     # load any previous weights
@@ -70,11 +70,11 @@ def main():
         passes = 0
         for local_batch, local_labels in generator:
 
-            truth_orient = local_labels['Orientation'].float().cuda()
-            truth_conf = local_labels['Confidence'].long().cuda()
+            truth_orient = local_labels['Orientation'].float()#.cuda()
+            truth_conf = local_labels['Confidence'].long()#.cuda()
             # truth_dim = local_labels['Dimensions'].float().cuda()
 
-            local_batch=local_batch.float().cuda()
+            local_batch=local_batch.float()#.cuda()
             [orient, conf, dim] = model(local_batch)
 
             orient_loss = orient_loss_func(orient, truth_orient, truth_conf)
@@ -99,7 +99,7 @@ def main():
             curr_batch += 1
 
         # save after every 10 epochs
-        if epoch % 10 == 0:
+        if epoch % 1 == 0:
             name = model_path + 'epoch_%s.pkl' % epoch
             print("====================")
             print ("Done with epoch %s!" % epoch)

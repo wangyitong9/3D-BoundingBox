@@ -123,8 +123,9 @@ def plot_2d_box(img, box_2d, orient_groundtruth=None):
     # print("orient_groundtruth", orient_groundtruth)
     center = ((pt1[0] + pt3[0]) // 2, (pt1[1] + pt3[1]) // 2)
     # print("center", center)
-    dest = (center[0] + int(35 * math.sin(orient_groundtruth)), center[1] + int(35 * math.cos(orient_groundtruth)))
+    
     if orient_groundtruth is not None:
+        dest = (center[0] + int(35 * math.sin(orient_groundtruth)), center[1] + int(35 * math.cos(orient_groundtruth)))
         cv2.arrowedLine(img, center, dest, cv_colors.RED.value, 2)
 
     # plot the 2d box

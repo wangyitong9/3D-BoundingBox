@@ -178,8 +178,8 @@ def main():
             alpha -= np.pi
 
             print("theta_L", alpha)
-            print("theta_ray". theta_ray)
-            print("2D box", )
+            print("theta_ray", theta_ray)
+            print("2D box", box_2d)
             if FLAGS.show_yolo:
                 location = plot_regressed_3d_bbox(img, proj_matrix, box_2d, dim, alpha, theta_ray, truth_img)
             else:
@@ -203,8 +203,9 @@ def main():
         if FLAGS.video:
             cv2.waitKey(1)
         else:
-            if cv2.waitKey(0) != 32: # space bar
-                exit()
+            cv2.waitKey(1)
+            #if cv2.waitKey(0) != 32: # space bar
+            #   exit()
 
 if __name__ == '__main__':
     main()

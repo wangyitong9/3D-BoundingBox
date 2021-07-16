@@ -26,16 +26,16 @@ def generate_bins(bins):
 class Dataset(data.Dataset):
     def __init__(self, path, bins=2, overlap=0.1):
 
-        self.top_label_path = "../DETRAC-Train-Annotations-XML/"
+        self.top_label_path = "../Annotation/DETRAC-Train-Annotations-XML/"
         self.top_img_path = "../train_dir_small/"
-        self.top_calib_path = os.path.abspath(os.path.dirname(__file__)) + "/calib/"
+        self.top_calib_path = "calib/"
         # use a relative path instead?
 
         # get Proj matrix for all scenes
         self.proj_matrix = {}
         file_names = [x for x in sorted(os.listdir(self.top_calib_path))]
         for file in file_names:
-            proj_matrx = get_P(file)
+            proj_matrx = get_P(self.top_calib_path + file)
             self.proj_matrix[file.split('.')[0]] = proj_matrx
 
 
@@ -124,8 +124,8 @@ class Dataset(data.Dataset):
         objects = []
         for id in ids:
             # is is in the form MVI_xxxxx-yyyyy
-            scene = id.split["-"][0]
-            frame_num = int(id.split["-"][1])
+            scene = id.split("-")[0]
+            frame_num = int(id.split("-")[1][3:])
             with open(self.top_label_path + '%s.xml'%scene) as xml_file:
                 tree = ET.parse(xml_file)
                 root = tree.getroot()
@@ -159,8 +159,8 @@ class Dataset(data.Dataset):
 
 
     def get_label(self, id, target_id):
-        scene = id.split["-"][0]
-        frame_num = int(id.split["-"][1])
+        scene = id.split("-")[0]
+        frame_num = int(id.split("-")[1][3:])
 
         # lines = open(self.top_label_path + '%s.txt'%id).read().splitlines()
         # label = self.format_label(lines[line_num])
