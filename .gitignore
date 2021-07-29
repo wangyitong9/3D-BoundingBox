@@ -10,3 +10,5 @@ eval/video/2011_09_26
 .idea/
 .vscode/
 *.DS_Store
+DETRAC-Test-Annotations-XML/*
+tmp1/*
