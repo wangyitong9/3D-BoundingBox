@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import xml.etree.ElementTree as ET
 def iou(detection, label):
     box_2d = detection.box_2d
     detected_x = box_2d[1][0] - box_2d[0][0]
@@ -67,3 +68,45 @@ def average_orientation_similarity(orientation_sets, label_sets, detection_sets)
             sr_list.append(orientation_similarity(orientation_sets[i], label_sets[i], assign_dict_list[i]))
         sr_sum += max(sr_list)
     return sr_sum / 11
+
+def average_orientation_error(orientation_sets, label_sets):
+    sum = 0
+    num = 0
+    for i in len(orientation_sets):
+        for j in len(orientation_sets[i]):
+            sum += abs(orientation_sets[i][j] - label_sets[i][j]['Theta'])
+            num += 1
+    return sum/num
+
+def parselabel(label_path):
+    label_sets = []
+    round = 0
+    with open(label_path) as xml_file:
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+        for frame in root.iter('frame'):
+            if round%8 == 0:
+                label_sets.append([])
+            # found the exact frame, now parse the boxed and orientation
+            for target_list in frame.iter('target_list'):
+                    for target in target_list.iter('target'):
+                        box_2d = None
+                        for box in target.iter('box'):
+                            b = box.attrib
+                            #print(b)
+                            top_left = (int(float(b["left"])), int(float(b["top"])))
+                            bottom_right = (top_left[0] + int(float(b["width"])), top_left[1] + int(float(b["height"])))
+                            box_2d = [top_left, bottom_right]
+                        for attribute in target.iter('attribute'):
+                            orientation_GT = float(attribute.attrib["orientation"])/180*np.pi
+                            theta = 0
+                            if orientation_GT >= 0 and orientation_GT <= 1.5 * np.pi:
+                                theta = 1/2 * np.pi - orientation_GT
+                            else:
+                                theta = 5/2 * np.pi - orientation_GT
+                        label = {
+                            'Box_2D': box_2d,
+                            'Theta': theta
+                        }
+                        label_sets[round//8].append(label)
+    return label_sets

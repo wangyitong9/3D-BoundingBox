@@ -7,6 +7,7 @@ SPACE bar for next image, any other key to exit
 """
 
 
+from enum import Flag
 from torch_lib.Dataset import *
 from library.Math import *
 from library.Plotting import *
@@ -24,6 +25,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torchvision.models import vgg
+import metrics
 
 import argparse
 
@@ -46,15 +48,7 @@ parser.add_argument("--cal-dir", default="camera_cal/",
                     help="Relative path to the directory containing camera calibration form KITTI. \
                     Default is camera_cal/")
 
-parser.add_argument("--video", action="store_true",
-                    help="Weather or not to advance frame-by-frame as fast as possible. \
-                    By default, this will pull images from ./eval/video")
-
-parser.add_argument("--show-yolo", action="store_true",
-                    help="Show the 2D BoundingBox detecions on a separate image")
-
-parser.add_argument("--hide-debug", action="store_true",
-                    help="Supress the printing of each 3d location")
+parser.add_argument("--label", default="labels/")
 
 
 def plot_regressed_3d_bbox(img, cam_to_img, box_2d, dimensions, alpha, theta_ray, img_2d=None):
@@ -102,11 +96,7 @@ def main():
 
     image_dir = FLAGS.image_dir
     cal_dir = FLAGS.cal_dir
-    if FLAGS.video:
-        if FLAGS.image_dir == "eval/image_2/" and FLAGS.cal_dir == "camera_cal/":
-            image_dir = "eval/video/2011_09_26/image_2/"
-            cal_dir = "eval/video/2011_09_26/"
-
+    label_path = FLAGS.label
 
     img_path = os.path.abspath(os.path.dirname(__file__)) + "/" + image_dir
     # using P_rect from global calibration file
@@ -123,10 +113,17 @@ def main():
         print("\nError: no images in %s"%img_path)
         exit()
 
+    detection_sets = []
+    orientation_sets = []
+    round = 0
+
     for img_id in ids:
+        if round%8 == 0:
+            detection_sets.append([])
+            orientation_sets.append([])
+        
         if len(img_id) == 0:
             continue
-        start_time = time.time()
 
         img_file = img_path + img_id + ".png"
         #print(img_file)
@@ -139,6 +136,8 @@ def main():
         yolo_img = np.copy(truth_img)
 
         detections = yolo.detect(yolo_img)
+
+        detection_sets[round//8].append(detections)
 
         orientations = []
 
@@ -179,6 +178,8 @@ def main():
             alpha += angle_bins[argmax]
             alpha -= np.pi
 
+            orientations.append(alpha + theta_ray)
+
             #print("theta_L", alpha)
             #print("theta_ray", theta_ray)
             #print("2D box", box_2d)
@@ -191,23 +192,13 @@ def main():
                 print('Estimated pose: %s'%location)
                 print('Estimated orient: %s'%orient)
 
-        if FLAGS.show_yolo:
-            numpy_vertical = np.concatenate((truth_img, img), axis=0)
-            cv2.imshow('SPACE for next image, any other key to exit', numpy_vertical)
-        else:
-            cv2.imshow('3D detections', img)
-
-        if not FLAGS.hide_debug:
-            print("\n")
-            print('Got %s poses in %.3f seconds'%(len(detections), time.time() - start_time))
-            print('-------------')
-
-        if FLAGS.video:
-            cv2.waitKey(1)
-        else:
-            cv2.waitKey(1)
-            #if cv2.waitKey(0) != 32: # space bar
-            #   exit()
+        orientation_sets[round//8].append(orientations)
+        round += 1
+    
+    label_sets = metrics.parselabel(label_path)
+    aos = metrics.average_orientation_similarity(orientation_sets, label_sets, detection_sets)
+    error = metrics.average_orientation_error(orientation_sets, label_sets)
+    print("aos: %f, error: %f" % (aos, error))
 
 if __name__ == '__main__':
     main()
